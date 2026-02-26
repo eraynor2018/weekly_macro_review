@@ -133,7 +133,7 @@ export default function App() {
             <div className="flex flex-col gap-2">
               <FileDropZone
                 label="Macro List"
-                accept=".json,.txt"
+                accept=".json,.txt,.csv"
                 onLoad={handleMacroLoad}
                 loaded={macros.length > 0}
                 fileInfo={macroFileInfo}
