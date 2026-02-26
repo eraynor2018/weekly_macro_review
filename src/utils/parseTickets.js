@@ -23,21 +23,55 @@ export function parseTickets(text) {
 }
 
 /**
- * Normalize text for matching: lowercase, collapse whitespace.
+ * Strip HTML tags and decode common HTML entities.
+ */
+function stripHtml(str) {
+  return String(str || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+}
+
+/**
+ * Normalize text for matching: strip HTML, lowercase, collapse whitespace.
  */
 function normalize(str) {
-  return String(str || '')
+  return stripHtml(str)
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 /**
+ * Extract the core matching text from a macro body:
+ * - Strip HTML
+ * - Remove all {{placeholder}} tokens (including greeting placeholders)
+ * - Take only the first two sentences of what remains
+ */
+function extractMatchText(body) {
+  const stripped = normalize(body)
+  // Remove all template variable placeholders entirely
+  const noPlaceholders = stripped.replace(/\{\{[^}]+\}\}/g, ' ').replace(/\s+/g, ' ').trim()
+  // Split into sentences on . ! ? and take first two non-trivial ones
+  const sentences = noPlaceholders
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 15)
+  return sentences.slice(0, 2).join(' ')
+}
+
+/**
  * Split macro body on Zendesk template variables like {{ticket.requester.first_name}}.
- * Returns the literal chunks between placeholders.
+ * Returns the literal chunks between placeholders, with HTML stripped.
  */
 function splitOnPlaceholders(body) {
-  return body.split(/\{\{[^}]+\}\}/).map(s => s.trim()).filter(Boolean)
+  return normalize(body)
+    .split(/\{\{[^}]+\}\}/)
+    .map(s => s.trim())
+    .filter(Boolean)
 }
 
 /**
@@ -50,8 +84,8 @@ export function macroUsedInTicket(macro, ticket) {
   // Skip very short macros — too many false positives
   if (normalizedBody.length < 20) return false
 
-  const chunks = splitOnPlaceholders(normalizedBody)
-  const longChunks = chunks.filter(c => c.length > 30)
+  // Core match text: first two sentences, no placeholders, no HTML
+  const matchText = extractMatchText(macro.body)
 
   // Collect all text to search across (comments + description)
   const textsToSearch = []
@@ -69,22 +103,17 @@ export function macroUsedInTicket(macro, ticket) {
 
   const allText = textsToSearch.join('\n')
 
-  // Strategy 1: chunk-based matching (handles template variables)
+  // Strategy 1: match the first two sentences of the macro body (no placeholders)
+  if (matchText.length > 30 && allText.includes(matchText)) return true
+
+  // Strategy 2: chunk-based matching on long literal chunks
+  const chunks = splitOnPlaceholders(macro.body)
+  const longChunks = chunks.filter(c => c.length > 30)
   if (longChunks.length > 0) {
     const matchedChunks = longChunks.filter(chunk => allText.includes(chunk))
     const ratio = matchedChunks.length / longChunks.length
     if (ratio >= 0.5) return true
   }
-
-  // Strategy 2: first 60 + last 60 chars as fallback
-  if (normalizedBody.length >= 60) {
-    const prefix = normalizedBody.slice(0, 60)
-    const suffix = normalizedBody.slice(-60)
-    if (allText.includes(prefix) || allText.includes(suffix)) return true
-  }
-
-  // Strategy 3: exact substring match (for macros without template vars)
-  if (chunks.length === 1 && allText.includes(normalizedBody)) return true
 
   return false
 }
