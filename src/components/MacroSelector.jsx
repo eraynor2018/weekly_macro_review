@@ -1,12 +1,24 @@
-export default function MacroSelector({ macros, selected, onChange }) {
-  const allSelected = macros.length > 0 && selected.size === macros.length
+import { useState } from 'react'
 
-  const toggleAll = () => {
-    if (allSelected) {
-      onChange(new Set())
+export default function MacroSelector({ macros, selected, onChange }) {
+  const [query, setQuery] = useState('')
+
+  const filtered = query.trim()
+    ? macros
+        .map((macro, idx) => ({ macro, idx }))
+        .filter(({ macro }) => macro.name.toLowerCase().includes(query.toLowerCase()))
+    : macros.map((macro, idx) => ({ macro, idx }))
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every(({ idx }) => selected.has(idx))
+
+  const toggleFiltered = () => {
+    const next = new Set(selected)
+    if (allFilteredSelected) {
+      filtered.forEach(({ idx }) => next.delete(idx))
     } else {
-      onChange(new Set(macros.map((_, i) => i)))
+      filtered.forEach(({ idx }) => next.add(idx))
     }
+    onChange(next)
   }
 
   const toggleOne = (idx) => {
@@ -24,17 +36,37 @@ export default function MacroSelector({ macros, selected, onChange }) {
       <div className="flex items-center justify-between">
         <span className="text-xs font-mono uppercase tracking-widest text-text-secondary">
           Macros — {macros.length} loaded
+          {selected.size > 0 && (
+            <span className="text-accent-blue"> · {selected.size} selected</span>
+          )}
         </span>
         <button
-          onClick={toggleAll}
+          onClick={toggleFiltered}
           className="text-xs font-mono text-accent-blue hover:text-accent-blue-hover transition-colors"
         >
-          {allSelected ? 'Deselect all' : 'Select all'}
+          {allFilteredSelected ? 'Deselect all' : 'Select all'}
+          {query.trim() ? ' filtered' : ''}
         </button>
       </div>
 
+      {/* Search box */}
+      <input
+        type="text"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Filter macros by name…"
+        className="w-full rounded border border-border bg-bg-primary px-3 py-2 text-xs text-text-primary placeholder-text-muted font-mono focus:outline-none focus:border-accent-blue"
+      />
+
+      {/* Filtered count hint */}
+      {query.trim() && (
+        <span className="text-xs text-text-muted font-mono">
+          {filtered.length} of {macros.length} match
+        </span>
+      )}
+
       <div className="flex flex-col gap-1 max-h-72 overflow-y-auto pr-1">
-        {macros.map((macro, idx) => (
+        {filtered.map(({ macro, idx }) => (
           <label
             key={idx}
             className={`
@@ -59,6 +91,12 @@ export default function MacroSelector({ macros, selected, onChange }) {
             </div>
           </label>
         ))}
+
+        {filtered.length === 0 && query.trim() && (
+          <p className="text-sm text-text-muted font-mono text-center py-4">
+            No macros match "{query}"
+          </p>
+        )}
       </div>
 
       {macros.length === 0 && (
