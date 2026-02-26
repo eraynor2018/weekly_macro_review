@@ -70,6 +70,7 @@ export default function App() {
         matchedIds: matched.map(t => t.id),
         analysis: null,
         error: null,
+        errorDetail: null,
       }
 
       if (matchCount === 0) {
@@ -95,6 +96,7 @@ export default function App() {
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}))
           resultEntry.error = err.error || `API error ${resp.status}`
+          resultEntry.errorDetail = err.detail || null
         } else {
           const data = await resp.json()
           resultEntry.analysis = data.analysis

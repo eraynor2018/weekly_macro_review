@@ -1,5 +1,5 @@
 export default function AnalysisResult({ result }) {
-  const { macro, matchCount, matchedIds, analysis, error } = result
+  const { macro, matchCount, matchedIds, analysis, error, errorDetail } = result
 
   return (
     <div className="rounded border border-border bg-bg-secondary flex flex-col gap-0">
@@ -32,7 +32,10 @@ export default function AnalysisResult({ result }) {
       {/* Analysis */}
       <div className="px-4 py-3">
         {error ? (
-          <p className="font-mono text-xs text-red-400">{error}</p>
+          <div className="flex flex-col gap-1">
+            <p className="font-mono text-xs text-red-400">{error}</p>
+            {errorDetail && <p className="font-mono text-xs text-red-300/70">{errorDetail}</p>}
+          </div>
         ) : analysis ? (
           <pre className="font-mono text-xs text-text-primary whitespace-pre-wrap leading-relaxed">
             {analysis}

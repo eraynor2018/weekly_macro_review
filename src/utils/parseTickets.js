@@ -47,31 +47,38 @@ function normalize(str) {
 
 /**
  * Extract the core matching text from a macro body:
- * - Strip HTML
- * - Remove all {{placeholder}} tokens (including greeting placeholders)
- * - Take only the first two sentences of what remains
+ * - Strip all HTML tags and entities
+ * - Split into sentences
+ * - Skip any sentence that contains a {{placeholder}} (greeting line)
+ * - Return the first two remaining substantive sentences
  */
 function extractMatchText(body) {
-  const stripped = normalize(body)
-  // Remove all template variable placeholders entirely
-  const noPlaceholders = stripped.replace(/\{\{[^}]+\}\}/g, ' ').replace(/\s+/g, ' ').trim()
-  // Split into sentences on . ! ? and take first two non-trivial ones
-  const sentences = noPlaceholders
+  // Strip HTML first (before normalizing case)
+  const htmlStripped = stripHtml(body)
+  // Split into sentences on . ! ? followed by whitespace
+  const sentences = htmlStripped
     .split(/(?<=[.!?])\s+/)
     .map(s => s.trim())
-    .filter(s => s.length > 15)
-  return sentences.slice(0, 2).join(' ')
+    .filter(s => s.length > 10)
+  // Drop any sentence that contains a placeholder
+  const substantive = sentences.filter(s => !/\{\{[^}]+\}\}/.test(s))
+  // Normalize (lowercase, collapse whitespace) the first two
+  return substantive
+    .slice(0, 2)
+    .map(s => s.toLowerCase().replace(/\s+/g, ' ').trim())
+    .join(' ')
 }
 
 /**
  * Split macro body on Zendesk template variables like {{ticket.requester.first_name}}.
  * Returns the literal chunks between placeholders, with HTML stripped.
+ * Only keeps chunks that are substantive (>30 chars).
  */
 function splitOnPlaceholders(body) {
   return normalize(body)
     .split(/\{\{[^}]+\}\}/)
     .map(s => s.trim())
-    .filter(Boolean)
+    .filter(s => s.length > 30)
 }
 
 /**
