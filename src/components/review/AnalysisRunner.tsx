@@ -1,0 +1,126 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { useApp } from '@/context/AppContext';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
+
+interface AnalysisRunnerProps {
+  onNext: () => void;
+  onBack: () => void;
+}
+
+export default function AnalysisRunner({ onNext, onBack }: AnalysisRunnerProps) {
+  const {
+    runAnalysis,
+    isAnalyzing,
+    analysisProgress,
+    analysisErrors,
+    analysisResults,
+    hasApiKey,
+  } = useApp();
+  const hasRun = useRef(false);
+
+  useEffect(() => {
+    if (!hasRun.current) {
+      hasRun.current = true;
+      runAnalysis();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isDone = !isAnalyzing && analysisResults.length > 0;
+  const progressPct =
+    analysisProgress.total > 0
+      ? Math.round((analysisProgress.current / analysisProgress.total) * 100)
+      : 0;
+
+  return (
+    <div className="space-y-4">
+      {!hasApiKey && (
+        <Card variant="amber">
+          <p className="text-amber-300 text-sm">
+            No local API key found. The server will try the{' '}
+            <code>ANTHROPIC_API_KEY</code> environment variable. If that&apos;s not set, go to{' '}
+            <strong>Settings</strong> to add your key.
+          </p>
+        </Card>
+      )}
+
+      {isAnalyzing && (
+        <Card>
+          <div className="flex items-center gap-3 mb-3">
+            <Spinner size="md" />
+            <div>
+              <p className="text-slate-200 text-sm font-medium">
+                Analyzing macro {analysisProgress.current} of {analysisProgress.total}
+              </p>
+              {analysisProgress.currentMacroTitle && (
+                <p className="text-slate-400 text-xs mt-0.5">
+                  &ldquo;{analysisProgress.currentMacroTitle}&rdquo;
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="w-full bg-slate-700 rounded-full h-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1 text-right">{progressPct}%</p>
+        </Card>
+      )}
+
+      {isDone && (
+        <Card variant="green">
+          <p className="text-green-300 text-sm font-medium">
+            Analysis complete —{' '}
+            {analysisResults.length} macro{analysisResults.length !== 1 ? 's' : ''} analyzed.
+          </p>
+        </Card>
+      )}
+
+      {analysisErrors.length > 0 && (
+        <Card variant="red">
+          <p className="text-red-300 text-sm font-medium mb-2">
+            {analysisErrors.length} macro{analysisErrors.length !== 1 ? 's' : ''} failed:
+          </p>
+          <ul className="space-y-1">
+            {analysisErrors.map((e) => (
+              <li key={e.macroTitle} className="text-xs text-red-400">
+                <strong>{e.macroTitle}:</strong> {e.error}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <div className="flex justify-between">
+        <Button variant="secondary" onClick={onBack} disabled={isAnalyzing}>
+          ← Back
+        </Button>
+        <div className="flex gap-2">
+          {!isAnalyzing && analysisErrors.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                hasRun.current = false;
+                runAnalysis();
+              }}
+            >
+              Retry
+            </Button>
+          )}
+          <Button
+            onClick={onNext}
+            disabled={isAnalyzing || analysisResults.length === 0}
+          >
+            View Report →
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
