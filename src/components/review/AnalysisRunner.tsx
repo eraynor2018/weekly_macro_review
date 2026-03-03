@@ -18,7 +18,6 @@ export default function AnalysisRunner({ onNext, onBack }: AnalysisRunnerProps) 
     analysisProgress,
     analysisErrors,
     analysisResults,
-    hasApiKey,
   } = useApp();
   const hasRun = useRef(false);
 
@@ -38,16 +37,6 @@ export default function AnalysisRunner({ onNext, onBack }: AnalysisRunnerProps) 
 
   return (
     <div className="space-y-4">
-      {!hasApiKey && (
-        <Card variant="amber">
-          <p className="text-amber-300 text-sm">
-            No local API key found. The server will try the{' '}
-            <code>ANTHROPIC_API_KEY</code> environment variable. If that&apos;s not set, go to{' '}
-            <strong>Settings</strong> to add your key.
-          </p>
-        </Card>
-      )}
-
       {isAnalyzing && (
         <Card>
           <div className="flex items-center gap-3 mb-3">
